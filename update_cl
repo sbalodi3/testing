@@ -1,0 +1,38 @@
+Update the attached src/harden/cli.py to display the Module 2 ingestion result
+after `harden scan` completes.
+
+Preserve all existing scan arguments and configuration behavior. Do not add new
+user inputs for ingestion.
+
+After a successful scan and normalization, print a concise summary containing:
+
+- Run ID
+- Final EZ-Scan status
+- Number of unique findings
+- Critical count
+- High count
+- Medium count
+- Low count
+- Unknown severity count
+- Unknown ecosystem count
+- Unresolved fixed-version count
+- Run artifact directory
+
+Read these values from ScanWorkflowResult and EzScanIngestionSummary. Do not
+reopen or reparse the CSV inside cli.py.
+
+Error behavior:
+
+- Catch expected configuration, EZ-Scan, bundle, ingestion, and artifact domain
+  errors at the CLI boundary.
+- Print a concise safe error to stderr.
+- Exit nonzero.
+- Never include response bodies, access tokens, or secret headers.
+- Do not catch KeyboardInterrupt as an ordinary successful failure.
+- Unexpected programming errors should not be converted into success.
+
+Do not add GitHub cloning, branch creation, repository mutation, SBOM
+generation, LangGraph, or model calls.
+
+If you can edit files, update cli.py directly. Otherwise return a unified diff.
+Include one example of the resulting CLI output.
