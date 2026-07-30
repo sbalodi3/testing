@@ -1,0 +1,51 @@
+Update the attached src/harden/run_ez_scan.py so the existing EZ-Scan workflow
+runs Module 2 ingestion after a successful result bundle has been validated.
+
+Inspect the current workflow signatures before editing. Preserve the current
+CLI-oriented target/config design, backend dependency injection, run ID
+generation, and artifact directory behavior.
+
+Required workflow order:
+
+1. Create the run and record the submission request.
+2. Submit the EZ-Scan job.
+3. Record the sanitized submission metadata.
+4. Poll and record status observations.
+5. Continue only when status.status == EzScanJobStatus.PASSED.
+6. Download results.zip into the run workflow.
+7. Record the download metadata.
+8. Call process_ez_scan_bundle(...) and obtain EzScanBundleManifest.
+9. Call:
+
+   ingestion = ingest_ez_scan_findings(
+       run_directory=run_directory,
+       bundle=bundle,
+   )
+
+10. Persist it with:
+
+   run_directory.record_ingestion_result(ingestion)
+
+11. Return the ingestion result or ingestion summary as part of the existing
+    ScanWorkflowResult.
+
+Additional requirements:
+
+- Do not download or ingest results for failed, cancelled, or timed-out jobs.
+- Do not parse acs_result.json or nv_result.json.
+- Do not print or persist the per-job access token.
+- Do not add environment-variable target configuration back into the workflow.
+- Do not introduce Git cloning, repository mutation, SBOM generation,
+  LangGraph, or model calls.
+- Preserve backend injection so the workflow remains testable offline.
+- Do not change ez_scan.py unless a compilation error proves a very small
+  compatibility change is necessary.
+- Let EzScanIngestError and artifact errors reach the CLI as safe failures;
+  do not silently report success when normalization fails.
+
+If ScanWorkflowResult does not currently exist, add a small Pydantic model or
+dataclass that includes at least run_id, run_directory, final status, download,
+bundle, and ingestion. Follow the style already used in this file.
+
+If you can edit files, update run_ez_scan.py directly. Otherwise return a
+unified diff. Explain the resulting workflow order after the code.
