@@ -1,0 +1,59 @@
+Review the complete Module 2 implementation as an integration pass.
+
+Scope:
+
+- src/harden/contracts.py
+- src/harden/artifacts.py
+- src/harden/ez_scan_bundle.py
+- src/harden/ez_scan_ingest.py
+- src/harden/run_ez_scan.py
+- src/harden/cli.py
+- tests
+- pyproject.toml
+
+Verify this exact flow:
+
+harden scan NEXUS_IMAGE
+-> EZ-Scan submit
+-> poll
+-> PASSED gate
+-> ZIP download
+-> safe bundle capture
+-> CSV normalization
+-> immutable normalized-findings.json
+-> immutable ingestion-summary.json
+-> CLI summary
+
+Check specifically for:
+
+- Import cycles
+- Pydantic v2 compatibility
+- Enum serialization
+- Deterministic finding IDs and ordering
+- Incorrect CSV row numbers
+- Duplicate handling
+- Artifact path traversal
+- Artifact overwrite behavior
+- Manifest phase transitions
+- Access-token exposure
+- Ingestion running after non-passed status
+- CLI exception handling that hides programming errors
+- Tests that accidentally contact the network
+- Tests that appear to validate Pydantic through model_copy instead of
+  model_validate
+
+Do not redesign working APIs or add future features. Make only changes needed
+to complete Module 2 correctly.
+
+Run:
+
+python3 -m pytest
+python3 -m ruff check .
+
+Then provide:
+1. The exact files changed.
+2. Test and lint results.
+3. The final artifact layout.
+4. Remaining assumptions.
+5. Confirmation that no Git mutation, SBOM classification, LangGraph, or LLM
+   behavior was added.
