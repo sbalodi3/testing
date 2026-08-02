@@ -1,0 +1,1534 @@
+MODULE 4 DEVIN DESKTOP PROMPT PACK
+==================================
+
+Purpose
+-------
+
+Use these prompts sequentially to implement Module 4 of the container
+hardening MVP.
+
+Devin Desktop with GPT-5.4 is only the coding environment used to implement
+this repository. Devin is not part of the running hardening product. The
+hardening CLI has its own runtime model client and bounded repair harness.
+
+This prompt pack assumes Module 3 is complete and can already:
+
+- Load normalized EZ-Scan findings from an existing run.
+- Clone a GitHub Enterprise repository into a run-owned workspace.
+- Create a local harden/<run-id> branch.
+- Locate supported dependency declarations.
+- Create and record a deterministic remediation plan.
+- Obtain user approval.
+- Use the product's runtime model to update approved files.
+- Run git diff --check.
+- Leave an uncommitted and unpushed local diff.
+
+Module 4 outcome:
+
+Module 3 approved local diff
+-> host Podman build
+-> complete build-attempt artifacts
+-> bounded build-log-driven repair when necessary
+-> successful local candidate image or stop after three attempts
+-> verified final diff
+-> optional publication approval
+-> one commit on harden/<run-id>
+-> GitHub Enterprise branch push
+
+Use Prompt 0 first. Then use Prompts 1 through 11 in order. Keep them in the
+same Devin task when possible so Devin retains the evolving interfaces.
+
+
+COMMON HEADER
+=============
+
+Prepend this header to each implementation prompt if you use separate Devin
+tasks:
+
+You are operating as the coding agent inside Devin Desktop. Devin is only the
+development environment for this repository. Devin is not part of the running
+container-hardening product.
+
+Do not create a Devin API client, Devin adapter, Devin configuration, Devin
+runtime dependency, or code that attempts to automate Devin Desktop.
+
+The running hardening CLI has its own model-client interface and repair
+harness.
+
+Work in the actual Module-3-complete container-hardening MVP repository on this
+work computer. Inspect the current files before editing and adapt to their real
+interfaces. Do not assume an older copied repository from another machine is
+current.
+
+Keep all product code flat under src/harden. Do not create an enterprise
+subpackage.
+
+This is a fast trusted-input MVP. Do not build a generalized policy engine,
+secret-management system, sandbox service, workflow database, or extensive
+input-validation layer. Add only the checks needed to protect the demo:
+
+- Build only from Module 3's run-owned managed clone.
+- Require a Module 3 CHANGES_APPLIED-equivalent result.
+- Keep repairs inside the approved requirements and container-file allowlist.
+- Never exceed three total Podman build attempts.
+- Never ask the model to repair workstation, registry, proxy, TLS, DNS, disk,
+  or Podman-machine failures.
+- Require a successful build before commit or push.
+- Require a separate publication decision before commit or push.
+- Reverify the successfully built diff immediately before commit.
+- Push only harden/<run-id> and never force-push.
+- Do not persist or print credentials.
+
+Module 4 supports:
+
+- Host Podman or Podman Desktop/Podman Machine.
+- The existing Module 3 managed clone.
+- A local candidate image.
+- Complete build logs stored as run artifacts.
+- A bounded runtime-model repair loop.
+- Repairs to Module 3-approved requirements files and the selected
+  Dockerfile/Containerfile.
+- GitHub Enterprise publication through the git CLI.
+- Existing Git Credential Manager or SSH-agent authentication.
+- A maximum of three total builds and two model repair calls.
+
+Module 4 does not include:
+
+- Running Podman inside another container or nested sandbox.
+- Running the built image as a service or exposing ports.
+- Pushing the image to Nexus or another registry.
+- Creating a pull request.
+- Calling GitHub REST, GraphQL, or the gh CLI.
+- AST rewrites or no-fixed-version remediation.
+- Arbitrary Python application-source edits.
+- LangGraph.
+- EZ-Scan rescanning.
+- Syft, CycloneDX, or Trivy.
+- Java, Node, or C remediation.
+- Production EC2 isolation.
+
+Preserve all existing Module 1, Module 2, and Module 3 behavior. Edit files
+directly, run focused tests and Ruff after each task, and report the exact
+files created, modified, and deliberately unchanged.
+
+
+PROMPT 0 - MODULE 3 INTEGRATION PREFLIGHT
+=========================================
+
+Inspect the actual Module-3-complete implementation and report its real
+interfaces. Do not edit files during this preflight.
+
+Inspect at least:
+
+- src/harden/contracts.py
+- src/harden/artifacts.py
+- src/harden/repo_workspace.py
+- src/harden/model_client.py
+- src/harden/remediation_agent.py
+- src/harden/run_remediation.py
+- src/harden/config.py
+- src/harden/cli.py
+- src/harden/dependency_locator.py
+- pyproject.toml
+- harden.yaml.example
+- .gitignore
+- tests
+
+Report:
+
+1. The exact RepositoryWorkspace fields.
+2. The exact ProposedFileChange, RemediationPlan, PlanDecision,
+   PlannedRemediation, RemediationStatus, and RemediationResult fields.
+3. The exact status value representing successfully applied Module 3 changes.
+4. How remediation/plan.json, remediation/approval.json,
+   remediation/result.json, and remediation/changes.diff are stored and
+   loaded.
+5. Whether the planned-remediation object can be reconstructed from artifacts
+   after the remediate CLI command exits.
+6. ArtifactStore and RunDirectory constructor signatures.
+7. Existing RunPhase behavior, including whether phases are strictly ordered
+   or can represent terminal branches.
+8. Whether artifacts are immutable and how identical writes are handled.
+9. GitRunner and RepositoryWorkspaceManager interfaces.
+10. How the current branch, changed files, Git diff, untracked files, and
+    git diff --check can be inspected.
+11. Whether GitRunner exposes exit codes and stderr for commands that may fail
+    normally, such as git ls-remote.
+12. ModelClient and FakeModelClient interfaces.
+13. How RemediationAgent validates and returns full-file changes.
+14. The Module 3 workspace-root and checkout layout.
+15. HardenConfig, GitConfig, and AgentConfig fields.
+16. Current Typer app, command, artifact-root, workspace-root, and --yes
+    conventions.
+17. Existing test, type-checking, formatting, and Ruff commands.
+18. Whether Podman is installed by running only a read-only command such as:
+    podman --version
+
+Do not run a container build, contact a registry, contact GitHub Enterprise,
+contact a model endpoint, or mutate a repository during this preflight.
+
+Confirm which Module 3 files can be reused unchanged and identify any
+interface differences that the following prompts must adapt to.
+
+Confirm that Module 4 should not need functional changes to:
+
+- src/harden/ez_scan.py
+- src/harden/ez_scan_bundle.py
+- src/harden/ez_scan_ingest.py
+- src/harden/run_ez_scan.py
+- src/harden/dependency_locator.py
+- src/harden/model_client.py
+- src/harden/remediation_agent.py
+
+Stop after the report.
+
+
+PROMPT 1 - ADD MODULE 4 CONTRACTS
+=================================
+
+Update src/harden/contracts.py with the minimal build and publication
+contracts.
+
+Preserve every existing Module 1, Module 2, and Module 3 contract. Reuse
+StrictModel, RepositoryWorkspace, ProposedFileChange, utc_now, and existing
+validation conventions.
+
+Adapt names if the real repository already has equivalent types. Do not create
+duplicates.
+
+Add:
+
+1. BuildFailureKind, a StrEnum:
+
+   - environment
+   - dependency
+   - containerfile
+   - unknown
+
+   Environment includes Podman availability, Podman Machine/daemon access,
+   registry authentication, DNS, proxy, TLS/corporate certificate, and disk
+   failures.
+
+2. BuildAttemptStatus, a StrEnum:
+
+   - succeeded
+   - failed
+   - environment_error
+   - timed_out
+
+3. BuildWorkflowStatus, a StrEnum:
+
+   - succeeded
+   - failed
+   - exhausted
+   - environment_error
+   - timed_out
+
+4. ContainerBuildRequest:
+
+   - run_id: str
+   - workspace: RepositoryWorkspace
+   - containerfile: str
+   - context: str
+   - image_tag: str
+   - max_attempts: int
+
+5. BuildAttempt:
+
+   - attempt_number: int
+   - status: BuildAttemptStatus
+   - failure_kind: BuildFailureKind | None
+   - exit_code: int | None
+   - duration_seconds: float
+   - image_tag: str
+   - log_artifact: str
+   - changed_files: list[str]
+   - summary: str
+
+6. BuildRepairProposal:
+
+   - run_id: str
+   - attempt_number: int
+   - summary: str
+   - diagnosis: str
+   - changes: list[ProposedFileChange]
+   - cannot_repair_reason: str | None
+
+7. BuildWorkflowResult:
+
+   - run_id: str
+   - status: BuildWorkflowStatus
+   - workspace: RepositoryWorkspace
+   - plan_sha256: str
+   - image_tag: str | None
+   - successful_attempt: int | None
+   - attempts: list[BuildAttempt]
+   - changed_files: list[str]
+   - final_diff_artifact: str | None
+   - verified_diff_sha256: str | None
+   - message: str
+
+8. PublicationStatus, a StrEnum:
+
+   - not_requested
+   - declined
+   - pushed
+   - push_failed
+   - branch_conflict
+   - failed
+
+9. PublicationDecision:
+
+   - run_id: str
+   - approved: bool
+   - method: str
+   - verified_diff_sha256: str
+   - successful_build_attempt: int
+   - decided_at: datetime using utc_now
+
+10. PublicationResult:
+
+    - run_id: str
+    - status: PublicationStatus
+    - branch_name: str
+    - remote_name: str
+    - commit_sha: str | None
+    - verified_diff_sha256: str
+    - successful_build_attempt: int
+    - message: str
+
+Keep validation light. Validate only required strings, positive attempt
+numbers, nonnegative durations, max_attempts between one and three, and
+SHA-256 shape where that matches the existing project.
+
+Build output text does not belong in these JSON contracts. Full output is
+stored separately as build.log.
+
+Do not add Podman API objects, container registry contracts, pull-request
+contracts, AST objects, LangGraph state, or production approval-policy types.
+
+Add focused contract tests. Run those tests and Ruff. Report the exact
+contracts added and any names adapted to existing interfaces.
+
+
+PROMPT 2 - EXTEND repo_workspace.py FOR BUILD VERIFICATION
+==========================================================
+
+Extend src/harden/repo_workspace.py with the small set of read-only
+verification helpers needed by Module 4.
+
+Preserve all Module 3 APIs and behavior. Do not move Module 3 code into a new
+package.
+
+Module 4 must reuse the existing managed checkout:
+
+<workspace-root>/<run-id>/repo
+
+It must never reclone the repository and must never operate on the user's
+normal checkout.
+
+Add methods equivalent to:
+
+- verify_workspace_exists(workspace)
+- current_branch(workspace) -> str
+- verify_hardening_branch(workspace)
+- changed_files(workspace) -> list[str], if not already present
+- untracked_files(workspace) -> list[str]
+- diff(workspace) -> str, if not already present
+- diff_sha256(workspace) -> str
+- verify_changed_files(workspace, allowed_paths)
+- diff_check(workspace), if not already present
+
+The exact names may follow the current class design.
+
+Verification behavior:
+
+1. Confirm checkout_path exists and is a Git worktree.
+2. Confirm the recorded checkout path remains under the configured workspace
+   root.
+3. Confirm the current branch is the recorded harden/<run-id> branch.
+4. Confirm the branch is not main, master, or the recorded base branch.
+5. Confirm every tracked changed path is inside the Module 3-derived
+   allowlist.
+6. Refuse publication when unexpected untracked files exist because they may
+   have influenced the container build without entering the commit.
+7. Hash the exact Git diff text or bytes returned by the same method used to
+   write build/verified-changes.diff.
+
+Do not add commit or push behavior to RepositoryWorkspaceManager. Publication
+belongs in git_publisher.py.
+
+If GitRunner currently raises on every nonzero exit and loses useful return
+codes or stderr, add one backward-compatible result-returning method for
+commands such as git ls-remote. Do not break existing Module 3 callers.
+
+Keep subprocess use cross-platform:
+
+- pathlib paths
+- argument arrays
+- no shell=True
+- no Bash-specific commands
+
+Do not add generalized malicious-repository defenses. These are consistency
+checks for the demo workflow.
+
+Add focused tests using temporary repositories:
+
+- Correct hardening branch passes.
+- Main or another branch fails.
+- Expected tracked changes pass.
+- Unexpected tracked paths fail.
+- Unexpected untracked files block publication readiness.
+- Diff hash is stable and matches the exact diff content.
+- Module 3 workspace tests remain green.
+
+Run focused tests and Ruff. Report the exact helpers added.
+
+
+PROMPT 3 - CREATE container_builder.py
+======================================
+
+Create src/harden/container_builder.py.
+
+This module owns host Podman preflight and one container-build attempt. It
+does not own retries, model calls, file edits, artifacts, commits, or pushes.
+
+Implement:
+
+- ContainerBuilderError
+- ContainerEnvironmentError, if useful with the existing error style
+- A small command-runner abstraction that can be faked in tests
+- A transient internal build-execution result containing:
+  - status
+  - exit code
+  - duration
+  - combined output
+  - image tag
+  - failure kind
+  - concise failure summary
+- ContainerBuilder
+
+Suggested public behavior:
+
+class ContainerBuilder:
+    def preflight(self) -> None:
+        ...
+
+    def build(self, request: ContainerBuildRequest) -> BuildExecution:
+        ...
+
+Adapt the exact interface to the existing code style.
+
+preflight() should use the configured executable to verify that Podman and its
+machine/daemon are reachable. A simple podman info or equivalent check is
+enough.
+
+build() must:
+
+1. Use the Module 3 managed clone as cwd.
+2. Resolve the CLI-supplied Containerfile/Dockerfile and build context relative
+   to the managed clone.
+3. Refuse paths outside that clone.
+4. Construct an argument sequence equivalent to:
+
+   podman build
+     --file <containerfile>
+     --tag localhost/harden-<sanitized-run-id>:candidate
+     <context>
+
+5. Use no shell=True.
+6. Inherit the workstation environment so Podman can use the existing Podman
+   Machine, corporate proxy, corporate certificates, Nexus login, and build
+   cache.
+7. Apply the configured timeout.
+8. Capture stdout and stderr together in their emitted order as closely as the
+   chosen subprocess API permits.
+9. Return the complete output to the orchestrator for artifact storage.
+10. Return a concise classification and summary.
+
+Use a generated local image tag. Do not let a repository name or run ID create
+an invalid image tag.
+
+Minimal failure classification:
+
+- environment:
+  - Podman executable missing.
+  - Podman Machine or service unavailable.
+  - Registry authentication/authorization failure.
+  - DNS or name-resolution failure.
+  - Proxy connection failure.
+  - TLS or corporate-certificate failure.
+  - No space left or storage exhaustion.
+
+- dependency:
+  - pip/package-manager resolution or installation failure.
+  - No matching distribution or conflicting package resolution.
+
+- containerfile:
+  - Dockerfile/Containerfile syntax.
+  - Missing command, copy path, or build-stage problem.
+
+- unknown:
+  - Any other non-environment build failure.
+
+Environment failures and timeouts will stop the workflow. Dependency,
+containerfile, and unknown failures may be shown to the bounded repair agent.
+The model is allowed to return that it cannot safely repair an unknown
+failure.
+
+Do not build a complex classifier. Straightforward, tested text matching is
+enough for the MVP.
+
+Do not:
+
+- Log into a registry.
+- Pass credentials on the command line.
+- Disable TLS verification.
+- Push an image.
+- Run the built image.
+- Expose ports.
+- Add build secrets or arbitrary build arguments.
+- Run Podman inside a container.
+- Call the runtime model.
+- Write repository files.
+- Write run artifacts.
+
+If the project already has a credential-redaction helper, reuse it before
+persisting output. Do not build a generalized redaction framework for this
+MVP. The primary protection is that Module 4 never puts credentials in its
+commands or model payload.
+
+Add offline tests with a fake command runner:
+
+- Exact argument sequence and cwd.
+- Successful result.
+- Nonzero dependency failure.
+- Containerfile failure.
+- Unknown failure.
+- Missing executable.
+- Podman Machine failure.
+- Registry authentication failure.
+- DNS/TLS/proxy failure.
+- Disk failure.
+- Timeout.
+- Containerfile or context outside the managed clone rejected.
+
+No normal automated test may call real Podman.
+
+Run focused tests and Ruff. Report the command interface and classification
+rules.
+
+
+PROMPT 4 - CREATE build_repair_agent.py
+=======================================
+
+Create src/harden/build_repair_agent.py.
+
+This is the running hardening product's bounded build-repair harness. It uses
+the existing Module 3 ModelClient. It has no Devin integration.
+
+Implement:
+
+- BuildRepairAgentError
+- BuildRepairAgent
+
+Suggested interface:
+
+class BuildRepairAgent:
+    def __init__(self, model_client: ModelClient) -> None:
+        ...
+
+    def propose_repair(
+        self,
+        *,
+        run_id: str,
+        attempt_number: int,
+        approved_plan: RemediationPlan,
+        plan_sha256: str,
+        files: Sequence[RepositoryFile],
+        allowed_paths: set[str],
+        current_diff: str,
+        build_log_tail: str,
+        previous_attempts: Sequence[BuildAttempt],
+    ) -> BuildRepairProposal:
+        ...
+
+Adapt field names to the actual Module 3 contracts found during preflight.
+
+The orchestrator calls this only after:
+
+- Module 3 changes were approved and applied.
+- A host Podman build failed.
+- The failure was not classified as environmental.
+- Another build attempt remains.
+
+Send the runtime model only:
+
+- The approved Module 3 remediation actions.
+- Exact EZ-Scan fixed versions from the approved plan.
+- The current contents of approved relevant files.
+- The selected Dockerfile/Containerfile.
+- The exact allowed-path list.
+- The current Git diff.
+- A bounded tail of the latest build log.
+- Concise summaries of previous attempts.
+- Run, branch, and attempt identifiers.
+
+The model instruction must say:
+
+- Diagnose the supplied build failure.
+- Modify only the supplied allowlisted requirements and container files.
+- Preserve the approved security fixed versions.
+- Do not downgrade or remove an approved security update.
+- Preserve unrelated file content.
+- Return full replacement file contents, not patches or shell commands.
+- Do not edit Python source, CI, Git metadata, credentials, or arbitrary files.
+- Do not suggest changing workstation Podman, Nexus credentials, proxy, TLS,
+  or DNS configuration.
+- Return an empty changes list and a clear cannot_repair_reason when it cannot
+  safely repair the failure.
+
+Require JSON matching BuildRepairProposal:
+
+- run_id
+- attempt_number
+- summary
+- diagnosis
+- changes
+- cannot_repair_reason
+
+Validate the complete proposal before any write:
+
+1. run_id and attempt_number match the request.
+2. Every path is in allowed_paths.
+3. Every changed path was supplied to the model.
+4. No absolute path, '..', or .git path.
+5. No duplicate file changes.
+6. finding_ids, when supplied, belong to the approved Module 3 plan.
+7. Approved fixed-version intent remains present.
+8. Every new_content value is a string.
+9. Empty changes include a useful cannot_repair_reason.
+
+Use the project's existing full-file replacement and validation conventions
+where possible.
+
+This module must not:
+
+- Write files.
+- Call Git.
+- Run Podman.
+- Retry itself.
+- Persist artifacts.
+- Execute model-returned commands.
+- Edit application source.
+- Perform AST analysis.
+- Import LangGraph.
+
+Add tests with FakeModelClient:
+
+- Valid requirements-file repair.
+- Valid Containerfile repair.
+- Unknown but repairable failure can produce a proposal.
+- Cannot-repair response.
+- Wrong run ID rejected.
+- Wrong attempt number rejected.
+- Unapproved path rejected.
+- Duplicate path rejected.
+- Unknown finding ID rejected.
+- Approved fixed-version regression rejected.
+- No filesystem writes.
+
+No test may contact a real model endpoint.
+
+Run focused tests and Ruff. Report the exact model payload and response
+contract.
+
+
+PROMPT 5 - CREATE git_publisher.py
+==================================
+
+Create src/harden/git_publisher.py.
+
+This module owns the final commit and GitHub Enterprise branch push. It uses
+the existing GitRunner and managed Module 3 checkout. It does not build the
+container, call a model, prompt the user, or create a pull request.
+
+Implement:
+
+- GitPublicationError
+- GitBranchConflictError
+- GitPublisher
+
+Suggested interface:
+
+class GitPublisher:
+    def publish(
+        self,
+        *,
+        workspace: RepositoryWorkspace,
+        build_result: BuildWorkflowResult,
+        decision: PublicationDecision,
+        allowed_paths: set[str],
+        remote_name: str = "origin",
+    ) -> PublicationResult:
+        ...
+
+Adapt the exact signature to existing dependency-injection and GitRunner
+patterns.
+
+Publication preconditions:
+
+1. build_result.status is succeeded.
+2. successful_attempt is present.
+3. final_diff_artifact and verified_diff_sha256 are present.
+4. decision.run_id matches.
+5. decision.approved is true.
+6. decision.verified_diff_sha256 matches the build result.
+7. decision.successful_build_attempt matches the build result.
+8. The managed checkout exists.
+9. The exact recorded harden/<run-id> branch is currently checked out.
+10. The branch is not main, master, or the requested base branch.
+11. git diff --check succeeds.
+12. Current changed files are all allowlisted.
+13. There are no unexpected untracked files.
+14. The current diff SHA-256 still equals the successfully built diff.
+
+Use the clone's existing remote URL unchanged. GitHub Enterprise
+authentication must be delegated to the workstation's Git Credential Manager
+or SSH agent.
+
+Before creating the commit:
+
+- Verify Git author identity is usable.
+- Do not set user.name or user.email.
+- Do not use the EZ-Scan user email as Git identity.
+- Check whether refs/heads/harden/<run-id> already exists on the remote.
+- Treat a different existing remote branch as branch_conflict.
+
+Commit behavior:
+
+1. Stage only the explicit verified changed files:
+
+   git add -- <path1> <path2> ...
+
+2. Do not use git add . or git add -A.
+3. Create exactly one commit:
+
+   chore(security): remediate EZ-Scan findings (<run-id>)
+
+4. Record the resulting commit SHA.
+
+Push behavior:
+
+- Push only the exact hardening branch.
+- Use a command equivalent to:
+
+  git push --set-upstream origin
+    HEAD:refs/heads/harden/<run-id>
+
+- Never use --force, --force-with-lease, or a '+' refspec.
+- Never push main, master, the requested base branch, or all branches.
+- Verify the remote branch points to the local commit after success.
+
+If push fails:
+
+- Preserve the local commit.
+- Return or raise a publication-specific failure that the orchestrator can
+  record separately from build success.
+- Never call the runtime repair agent.
+- Report the exact local branch and commit SHA so the user can inspect or
+  manually retry the push.
+
+Automatic recovery or resumable publication after a partially completed push
+is out of scope for this MVP.
+
+Do not:
+
+- Accept a PAT argument.
+- Embed credentials in a URL.
+- Print remote URLs containing credentials.
+- Modify global or local Git credential configuration.
+- Disable TLS verification.
+- Call GitHub REST or GraphQL.
+- Invoke gh.
+- Create a pull request.
+- Push the candidate container image.
+
+Add tests using temporary local Git repositories and a temporary bare remote:
+
+- Successful one-commit branch push.
+- Only explicit changed files staged.
+- No push to the base branch.
+- No force option.
+- Missing publication approval rejected.
+- Failed build rejected.
+- Diff-hash mismatch rejected.
+- Unexpected changed or untracked file rejected.
+- Wrong current branch rejected.
+- Remote branch collision.
+- Missing Git identity produces a useful failure without changing config.
+- Push failure preserves the local commit.
+- Existing Module 3 repository-workspace tests remain green.
+
+No test may contact GitHub Enterprise or GitHub.com.
+
+Run focused tests and Ruff. Report every Git command the implementation may
+execute.
+
+
+PROMPT 6 - UPDATE artifacts.py FOR BUILD AND PUBLICATION
+========================================================
+
+Update src/harden/artifacts.py for Module 4.
+
+Preserve all existing Module 1, Module 2, and Module 3 behavior, path
+confinement, immutable artifact handling, hashing, and manifest updates.
+
+Adapt phases to the actual RunPhase design found during preflight. Add
+equivalents of:
+
+- BUILDING
+- BUILD_REPAIRING
+- BUILD_SUCCEEDED
+- BUILD_FAILED
+- PUBLICATION_DECLINED
+- BRANCH_COMMITTED
+- BRANCH_PUBLISHED
+- PUBLICATION_FAILED
+
+Do not force a phase-ordering design that conflicts with the existing
+implementation. The important behavior is that build success/failure and
+publication success/failure are auditable and distinguishable.
+
+Add RunDirectory methods following existing conventions:
+
+- record_build_request(...)
+  -> build/request.json
+
+- record_build_attempt(attempt_number, attempt, log_text)
+  -> build/attempts/01/build.log
+  -> build/attempts/01/result.json
+
+- record_build_repair_proposal(attempt_number, proposal)
+  -> build/attempts/01/repair-proposal.json
+
+- record_verified_build_diff(diff_text)
+  -> build/verified-changes.diff
+  -> return StoredArtifact so its SHA-256 can be placed in the build result
+
+- record_build_result(...)
+  -> build/result.json
+
+- record_publication_decision(...)
+  -> build/publication-decision.json
+
+- record_publication_result(...)
+  -> build/publication-result.json
+
+- load_build_result(...)
+- load_remediation_result(...), if missing
+- load_remediation_plan(...), if missing
+- load_plan_decision(...), if missing
+- load_repository_workspace(...), if missing
+
+Use two-digit attempt directories so all artifacts are unique and
+deterministically ordered.
+
+Important behavior:
+
+- Store the complete build output in build.log.
+- Send only a bounded tail to the runtime model; that belongs in the
+  orchestrator, not ArtifactStore.
+- Do not copy the managed repository into run artifacts.
+- Do not overwrite EZ-Scan, normalized-finding, or Module 3 artifacts.
+- Do not persist raw model HTTP requests.
+- Do not persist Git credentials, model credentials, authorization headers, or
+  credential-bearing repository URLs.
+- Write build/result.json once after the workflow reaches its terminal build
+  result.
+- Write build/verified-changes.diff only after a successful build.
+- Put the exact verified diff artifact SHA-256 into BuildWorkflowResult.
+- Bind PublicationDecision and PublicationResult to that same SHA-256 and
+  successful attempt number.
+- Preserve the existing immutable/idempotent write convention.
+
+Do not introduce a database, event-sourcing layer, resumable workflow engine,
+artifact-upload service, or generalized secret scanner.
+
+Add focused tests:
+
+- Attempt path layout.
+- Multiple attempts do not overwrite each other.
+- Repair proposal attaches to the failed attempt that caused it.
+- Successful build has verified diff and matching SHA-256.
+- Failed build has no verified successful diff.
+- Publication decision and result bind to the successful diff hash.
+- Earlier Module 1-3 artifacts remain unchanged.
+- Existing path-confinement and immutability behavior remains green.
+
+Run focused tests and Ruff. Report the final artifact layout.
+
+
+PROMPT 7 - CREATE run_build.py
+==============================
+
+Create src/harden/run_build.py.
+
+This module owns the deterministic Module 4 build/repair workflow. It loads an
+existing Module 3 run, reuses its managed checkout, runs host Podman, applies
+bounded model repairs, and produces a terminal BuildWorkflowResult.
+
+It does not prompt the user, commit, push, or create a pull request.
+
+Implement:
+
+- BuildWorkflowError
+- A build_candidate(...) orchestration function or equivalent service class
+
+Suggested inputs:
+
+- RunDirectory
+- run_id
+- containerfile
+- build context
+- configured maximum attempts
+- ContainerBuilder
+- RepositoryWorkspaceManager
+- BuildRepairAgent
+
+Adapt the signature to the actual dependency-injection style.
+
+Preconditions:
+
+1. Load the recorded Module 3 repository workspace.
+2. Load the recorded Module 3 plan and exact plan SHA-256.
+3. Load the recorded Module 3 plan decision.
+4. Load the recorded Module 3 remediation result.
+5. Require matching run IDs.
+6. Require that the plan was approved.
+7. Require the Module 3 result status equivalent to CHANGES_APPLIED.
+8. Require the recorded managed clone to exist.
+9. Require the recorded hardening branch to be checked out.
+10. Require a nonempty tracked Module 3 diff.
+11. Run git diff --check.
+
+Do not reclone, rerun EZ-Scan, renormalize findings, rediscover a different
+repository, or repeat Module 3 remediation.
+
+Derive the writable repair allowlist from persisted Module 3 data:
+
+- Paths referenced by approved plan actions or persisted discovery.
+- The selected Containerfile/Dockerfile used for the build.
+
+Do not use a broad repository glob and do not allow arbitrary application
+source.
+
+Create and record ContainerBuildRequest before the first attempt.
+
+Call ContainerBuilder.preflight() once before entering the build loop. If the
+configured executable or Podman Machine/service is unavailable:
+
+- Record an environment_error terminal BuildWorkflowResult.
+- Do not enter the build loop.
+- Do not call the model.
+- Do not commit or push.
+
+Use a plain bounded Python loop, not LangGraph:
+
+for attempt_number in range(1, max_attempts + 1):
+    ...
+
+Hard cap max_attempts at three even if configuration is incorrect.
+
+For every attempt:
+
+1. Verify the workspace, hardening branch, allowlisted changed files, and
+   absence of unexpected untracked files.
+2. Capture the current changed-file list.
+3. Call ContainerBuilder.build() exactly once.
+4. Record the full build log and BuildAttempt artifact.
+
+On success:
+
+1. Run git diff --check again.
+2. Verify changed files remain in the allowlist.
+3. Capture the exact final diff.
+4. Record build/verified-changes.diff.
+5. Use that StoredArtifact SHA-256 as verified_diff_sha256.
+6. Record a succeeded BuildWorkflowResult including:
+   - candidate image tag
+   - successful attempt
+   - all attempt records
+   - final changed files
+   - final diff artifact
+   - verified diff SHA-256
+7. Stop without committing or pushing.
+
+On environment failure:
+
+- Record the attempt.
+- Do not call the runtime model.
+- Record an environment_error terminal result.
+- Stop immediately.
+
+On timeout:
+
+- Record the attempt.
+- Do not call the runtime model.
+- Record a timed_out terminal result.
+- Stop immediately.
+
+On dependency, containerfile, or unknown failure:
+
+- If this was the final allowed build attempt:
+  - Do not call the model.
+  - Record exhausted.
+  - Stop.
+
+- Otherwise:
+  1. Take only the configured bounded tail of the latest log.
+  2. Read only the allowlisted files.
+  3. Call BuildRepairAgent once.
+  4. Record its proposal under the failed attempt.
+  5. If it returns no changes, record a failed result and stop.
+  6. Validate the complete proposal before any write.
+  7. Apply changes through RepositoryWorkspaceManager using allowed_paths.
+  8. Run git diff --check.
+  9. Confirm the proposal produced a concrete new diff.
+  10. Continue to the next build attempt.
+
+Budget rules:
+
+- Maximum three total Podman builds.
+- Maximum two model repair calls.
+- No model call after attempt three.
+- No blind retry without a concrete repository change.
+- No retry for environment failure or timeout.
+
+Failure behavior:
+
+- Preserve the managed clone and all Module 3 changes.
+- Preserve every completed build log and proposal.
+- Never commit.
+- Never push.
+- Return a concise terminal result pointing to the last log.
+
+Keep the actual agentic responsibility narrow. A repair may adjust approved
+requirements and container files, but not Python source. If an upgraded
+dependency requires application-code changes, report that Module 5 is needed.
+
+Add offline workflow tests:
+
+- First build succeeds and model is never called.
+- First build fails, one repair is applied, and second build succeeds.
+- Three failures create exactly three builds and at most two model calls.
+- max_attempts=1 performs no repair.
+- Environment failure stops without a model call.
+- Timeout stops without a model call.
+- Cannot-repair response stops.
+- No-op repair stops instead of rebuilding.
+- Invalid proposal writes nothing.
+- git diff --check failure stops.
+- Successful final diff and hash are recorded.
+- Failed workflow has no verified successful diff.
+- No workflow path commits or pushes.
+
+Use injected fakes. No automated test may call real Podman or a real model.
+
+Run focused tests and Ruff. Report the exact attempt and model-call limits.
+
+
+PROMPT 8 - ADD PUBLICATION ORCHESTRATION
+========================================
+
+Extend src/harden/run_build.py with a separate publication function. Keep the
+build loop and publication boundary explicit.
+
+Suggested interface:
+
+def publish_candidate(
+    *,
+    run_directory: RunDirectory,
+    build_result: BuildWorkflowResult,
+    decision: PublicationDecision,
+    publisher: GitPublisher,
+    workspace_manager: RepositoryWorkspaceManager,
+) -> PublicationResult:
+    ...
+
+The CLI, not this function, owns interactive confirmation.
+
+publish_candidate() must:
+
+1. Require matching run IDs.
+2. Require a successful build result.
+3. Require successful_attempt.
+4. Require the decision to reference that successful attempt.
+5. Require the decision to contain the exact verified diff SHA-256.
+6. Record publication-decision.json before commit or push.
+7. If declined:
+   - Do not call GitPublisher.
+   - Do not commit.
+   - Do not push.
+   - Record and return a declined PublicationResult.
+8. If approved:
+   - Reconstruct the Module 3-derived allowed paths.
+   - Call GitPublisher once.
+   - Record PublicationResult.
+9. Keep build success distinct from publication failure.
+
+If GitPublisher reports push failure after creating a local commit:
+
+- Preserve the commit.
+- Record status push_failed.
+- Clearly state that the image build succeeded but publication did not.
+- Do not enter the build-repair loop.
+- Do not make another model call.
+
+If GitPublisher reports a remote branch collision:
+
+- Record branch_conflict.
+- Do not force-push.
+- Preserve the local state for inspection.
+
+Do not add automatic retry orchestration, a background worker, a pull request,
+or GitHub API calls.
+
+Add tests:
+
+- Decline records decision and result with no GitPublisher call.
+- Approval hash mismatch rejected before GitPublisher.
+- Failed build cannot publish.
+- Approved successful build calls GitPublisher once.
+- Push failure does not change build status.
+- Branch conflict does not call a model or rebuild.
+- Publication artifacts use the successful diff hash and attempt number.
+
+Run focused tests and Ruff. Report the exact publication gate.
+
+
+PROMPT 9 - UPDATE CONFIGURATION AND YAML
+========================================
+
+Update src/harden/config.py and harden.yaml.example for Module 4.
+
+Preserve every existing EZ-Scan, Git, and runtime-agent setting.
+
+Add BuildConfig or the equivalent:
+
+- executable: str = "podman"
+- timeout_seconds: int = 1800
+- max_attempts: int = 3
+- model_log_tail_chars: int = 60000
+- image_tag_prefix: str = "localhost/harden"
+
+Keep max_attempts between one and three. The orchestrator must also enforce the
+hard maximum of three.
+
+Extend GitConfig only if necessary:
+
+- remote_name: str = "origin"
+- push_timeout_seconds: int = 300
+
+Example YAML:
+
+build:
+  executable: podman
+  timeout_seconds: 1800
+  max_attempts: 3
+  model_log_tail_chars: 60000
+  image_tag_prefix: localhost/harden
+
+git:
+  executable: git
+  branch_prefix: harden/
+  clone_timeout_seconds: 300
+  remote_name: origin
+  push_timeout_seconds: 300
+
+Adapt the example to the actual existing GitConfig rather than duplicating the
+git section.
+
+Configuration boundaries:
+
+- Podman executable and timeouts are internal configuration.
+- Containerfile and build context are user-facing CLI inputs.
+- GitHub repository URL remains the Module 3 CLI input and persisted workspace
+  metadata.
+- GitHub credentials do not belong in YAML.
+- Nexus credentials do not need a new Module 4 setting.
+- Runtime-model configuration continues to use the existing AgentConfig.
+- Do not add Devin configuration.
+- Do not add GitHub API base URL, PAT, registry-push, PR, AST, or LangGraph
+  settings.
+
+Ensure .harden/ remains ignored. Do not churn .gitignore if it is already
+correct.
+
+Keep validation minimal and consistent with the current Pydantic version.
+
+Add configuration tests and run Ruff. Report the exact YAML additions.
+
+
+PROMPT 10 - ADD THE build CLI COMMAND
+=====================================
+
+Update src/harden/cli.py while preserving all existing scan, ingest if
+present, and remediate commands.
+
+Add:
+
+harden build \
+  --run-id RUN_ID \
+  --containerfile Containerfile \
+  --context . \
+  --config harden.yaml
+
+Options:
+
+- --run-id: required existing Module 3 run.
+- --containerfile: default Containerfile, with a simple Dockerfile fallback
+  only if that matches the current CLI style.
+- --context: default "." relative to the managed clone.
+- --config: follow the existing convention.
+- --root or --artifact-root: follow the existing convention.
+- --workspace-root: use the existing Module 3 convention if it remains
+  necessary.
+- --push: opt into the publication path after successful build.
+- --yes: bypass only the publication confirmation when --push is also set.
+
+Do not add user-facing GitHub credentials, Nexus credentials, model
+credentials, GitHub API URL, image registry push, or PR options.
+
+CLI flow:
+
+1. Load configuration and the existing run.
+2. Construct the existing artifact and workspace dependencies.
+3. Construct ContainerBuilder.
+4. Reuse the existing ModelClient and construct BuildRepairAgent.
+5. Call build_candidate().
+6. Print each attempt:
+   - attempt number and maximum
+   - status
+   - failure classification when failed
+   - log artifact path
+   - applied repair summary when present
+7. Print the terminal build result:
+   - run ID
+   - candidate image tag on success
+   - successful attempt
+   - changed files
+   - verified diff path and SHA-256
+   - local workspace and branch
+   - last log and reason on failure
+8. If the build failed:
+   - exit nonzero
+   - never prompt for publication
+   - never commit or push
+9. If the build succeeded without --push:
+   - exit successfully
+   - clearly state that the branch is local, uncommitted, and unpushed
+10. If the build succeeded with --push:
+    - display the exact branch, changed files, successful build attempt, and
+      verified diff SHA-256
+    - ask a separate confirmation with default False
+11. If --push --yes:
+    - create an approved PublicationDecision with method yes_flag
+    - skip only the publication prompt
+12. If --yes without --push:
+    - do not commit or push
+13. On publication decline:
+    - record the decision and result
+    - leave the branch local and uncommitted
+14. On approval:
+    - call publish_candidate()
+    - print commit SHA and remote branch on success
+
+GitHub Enterprise behavior:
+
+- Use the existing clone's origin URL.
+- Pass it through git unchanged.
+- Existing GCM or SSH-agent state handles authentication.
+- Never ask for a PAT.
+- Never assume github.com.
+- Never call GitHub APIs or gh.
+
+Constructing the model client must not itself make a network request. A
+first-attempt successful build must result in zero model calls.
+
+Catch expected artifact, workspace, Podman, model, repair, and publication
+domain errors. Exit nonzero with a concise actionable message. Do not hide
+unexpected programming errors.
+
+Add CLI tests with injected fakes:
+
+- Help includes scan, remediate, and build.
+- Successful build without --push does not prompt, commit, or push.
+- Failed build never prompts or publishes.
+- --push prompts only after success.
+- Decline produces no commit or push.
+- --push --yes publishes after success.
+- --yes without --push does not publish.
+- Attempt and artifact output is useful.
+- GitHub Enterprise credentials are never requested or printed.
+
+No CLI test may access Podman, GitHub Enterprise, Nexus, EZ-Scan, or a real
+model endpoint.
+
+Run focused tests and Ruff. Report one build-only and one build-and-publish CLI
+example.
+
+
+PROMPT 11 - TESTS, README, AND FINAL INTEGRATION
+================================================
+
+Perform the final Module 4 integration pass.
+
+Verify this complete flow:
+
+existing Module 3 CHANGES_APPLIED run
+-> load persisted workspace, approved plan, and result
+-> verify local harden/<run-id> branch and diff
+-> run host Podman build from the managed clone
+-> store attempt log and result
+-> on repairable failure, send bounded log context to runtime repair agent
+-> apply only allowlisted requirements/container-file changes
+-> git diff --check
+-> rebuild within the three-attempt budget
+-> on success, store verified diff and SHA-256
+-> without --push, leave branch local and uncommitted
+-> with --push, ask for separate publication approval
+-> reverify exact successful diff
+-> create one commit
+-> push only harden/<run-id> to the existing GitHub Enterprise remote
+
+Create or finish:
+
+- tests/test_container_builder.py
+- tests/test_build_repair_agent.py
+- tests/test_git_publisher.py
+- tests/test_run_build.py
+- tests/test_module4_integration.py, if useful
+- contract tests
+- artifact tests
+- repository-workspace tests
+- configuration tests
+- CLI tests
+
+Testing rules:
+
+- Normal automated tests run offline.
+- Use a fake Podman command runner.
+- Use FakeModelClient or a fake BuildRepairAgent.
+- Use temporary local Git repositories.
+- Use a temporary bare Git repository as the GitHub Enterprise remote.
+- Do not contact Podman, GitHub Enterprise, GitHub.com, Nexus, EZ-Scan, a real
+  model endpoint, or Devin.
+
+Test at least:
+
+1. Correct Podman argument sequence, cwd, tag, Containerfile, and context.
+2. First build succeeds with exactly one build and zero model calls.
+3. One repairable failure, one allowlisted repair, and second-build success.
+4. Three repairable failures produce exactly three builds and at most two
+   model calls.
+5. No model call happens after the final attempt.
+6. Environment failures stop without model calls.
+7. Timeout stops without model calls.
+8. Cannot-repair and no-op proposals stop without another build.
+9. Invalid or partially invalid repair proposals write nothing.
+10. git diff --check failure prevents the next build.
+11. Full log artifacts and bounded model log context.
+12. Successful build result identifies image tag and successful attempt.
+13. Verified diff artifact hash matches BuildWorkflowResult.
+14. Failed build cannot commit or push.
+15. Successful build does not publish by default.
+16. Publication decline creates no commit or push.
+17. Approved publication creates exactly one commit.
+18. Only explicit verified files are staged.
+19. Only harden/<run-id> is pushed.
+20. No force-push option or base-branch refspec is used.
+21. Current-diff mutation after build causes publication rejection.
+22. Unexpected untracked files block publication.
+23. Remote branch collision fails without changing the remote.
+24. Missing Git identity does not cause the application to configure Git.
+25. Push failure preserves the successful local commit.
+26. Build success remains recorded when publication fails.
+27. Module 4 reuses the existing clone and does not reclone.
+28. Module 4 preserves all Module 1-3 artifacts.
+29. Existing scan and remediate CLI behavior remains green.
+30. No Devin code, configuration, or runtime dependency exists.
+31. No LangGraph, AST, PR, registry-push, or rescan implementation was added.
+
+Run the repository's actual commands, normally:
+
+python -m pytest
+python -m ruff check .
+
+Use the exact commands discovered during preflight if they differ.
+
+Optional host-Podman smoke test:
+
+- Add at most one separately marked integration test.
+- Skip automatically when Podman is absent or its machine is unavailable.
+- Use a tiny temporary repository and a no-network Containerfile such as a
+  scratch image with a LABEL.
+- Never push an image or Git branch.
+- Never require Nexus, GitHub Enterprise, or network access.
+- Do not make the optional live test part of the normal unit-test gate.
+
+Update README.md with:
+
+- Module 4's build, bounded repair, and optional publication flow.
+- Podman/Podman Desktop prerequisite.
+- The Podman Machine must already be running.
+- Existing workstation proxy, corporate certificate, Nexus, GCM, and SSH-agent
+  configuration is reused.
+- Podman runs on the host against the managed clone.
+- The maximum of three total build attempts.
+- Only a bounded log tail is sent to the runtime model.
+- Repairs remain limited to approved requirements/container files.
+- A successful candidate image remains local.
+- Publication is opt-in and separately approved.
+- Only harden/<run-id> is committed and pushed.
+- No pull request is created.
+- Devin is used only to implement the project and is absent at runtime.
+- Module 5, not Module 4, will handle no-fixed-version AST work.
+
+Include a build-only example:
+
+harden build \
+  --run-id RUN_ID \
+  --containerfile Containerfile \
+  --context . \
+  --config harden.yaml
+
+Include a build-and-publish example:
+
+harden build \
+  --run-id RUN_ID \
+  --containerfile Containerfile \
+  --context . \
+  --config harden.yaml \
+  --push
+
+Document the resulting artifact layout:
+
+.harden/runs/<run-id>/build/
+  request.json
+  attempts/
+    01/
+      build.log
+      result.json
+      repair-proposal.json
+    02/
+      ...
+    03/
+      ...
+  verified-changes.diff
+  result.json
+  publication-decision.json
+  publication-result.json
+
+Adapt the root prefix to the actual project convention.
+
+Finish with:
+
+- Exact files created.
+- Exact files modified.
+- Exact files deliberately unchanged.
+- Full test and Ruff results.
+- One build-only command.
+- One build-and-publish command.
+- Final artifact layout.
+- Maximum observed build and model-call counts.
+- Confirmation that failed builds cannot publish.
+- Confirmation that publication is opt-in.
+- Confirmation that only harden/<run-id> can be pushed.
+- Confirmation that Podman runs on the host.
+- Confirmation that Devin is absent from the runtime product.
+- Any remaining live Podman, GitHub Enterprise, or model-endpoint assumption.
+
+
+EXPECTED MODULE 4 FILES
+=======================
+
+Expected new source files:
+
+- src/harden/container_builder.py
+- src/harden/build_repair_agent.py
+- src/harden/git_publisher.py
+- src/harden/run_build.py
+
+Expected new test files:
+
+- tests/test_container_builder.py
+- tests/test_build_repair_agent.py
+- tests/test_git_publisher.py
+- tests/test_run_build.py
+- tests/test_module4_integration.py, if useful
+
+Expected existing files to change:
+
+- src/harden/contracts.py
+- src/harden/artifacts.py
+- src/harden/repo_workspace.py
+- src/harden/config.py
+- src/harden/cli.py
+- harden.yaml.example
+- README.md
+- tests/
+
+Expected files to remain unchanged unless preflight finds a real compatibility
+issue:
+
+- src/harden/ez_scan.py
+- src/harden/ez_scan_bundle.py
+- src/harden/ez_scan_ingest.py
+- src/harden/run_ez_scan.py
+- src/harden/dependency_locator.py
+- src/harden/model_client.py
+- src/harden/remediation_agent.py
+- src/harden/run_remediation.py
+
+No new LangGraph dependency should be added.
+
+
+MODULE 4 COMPLETION CRITERIA
+============================
+
+Module 4 is complete when the CLI can:
+
+1. Load an existing successful Module 3 remediation run.
+2. Reuse its managed clone and local hardening branch.
+3. Build that checkout with host Podman.
+4. Store complete logs for every build attempt.
+5. Distinguish environmental failures from repository build failures.
+6. Ask the runtime repair agent for allowlisted changes after a repairable
+   failure.
+7. Apply repairs and run git diff --check.
+8. Stop after no more than three builds and two model calls.
+9. Save the exact successful diff and its SHA-256.
+10. Leave the candidate image local.
+11. Leave the branch uncommitted and unpushed by default.
+12. Ask for separate publication approval when --push is requested.
+13. Reverify the exact successfully built diff before committing.
+14. Create one commit on harden/<run-id>.
+15. Push only that hardening branch through the existing GitHub Enterprise
+    remote and workstation authentication.
+16. Preserve logs and local state without publication when the build fails.
+17. Keep Devin Desktop completely outside the running product.
+
+At this point the manager-facing MVP can demonstrate:
+
+EZ-Scan result
+-> normalized vulnerabilities
+-> approved requirements/Containerfile changes
+-> isolated GitHub Enterprise hardening branch
+-> host Podman build
+-> bounded build-log-driven agent repair
+-> successful local candidate image
+-> optional hardening branch publication
+
+No-fixed-version package removal, Python AST analysis, application-source
+rewrites, and per-package LangGraph workflows belong in Module 5.
